@@ -1,0 +1,18 @@
+name = "tokglass"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Pages that may call the JSON endpoints from a browser.
+[vars]
+ALLOWED_ORIGINS = "https://sebastjanb.github.io,http://localhost:8897"
+
+# One small object per pairing code: the glasses poll seconds after the phone
+# writes, so the relay needs storage that is consistent at once.
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "Relay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Relay"]

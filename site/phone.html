@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TokGlass · Phone</title>
+  <meta name="description" content="Send a TikTok hashtag, creator or video to your glasses.">
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    :root { --bg: #0f0f0f; --card: #1f1f1f; --line: #3a3a3a; --fg: #f1f1f1; --dim: #aaa; --accent: #fe2c55; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: calc(20px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+    }
+    main { max-width: 520px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    header img { width: 40px; height: 40px; border-radius: 10px; }
+    h1 { margin: 0; font-size: 22px; }
+    label { display: block; margin: 18px 0 6px; font-size: 14px; color: var(--dim); }
+    input {
+      width: 100%;
+      height: 54px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      color: var(--fg);
+      font: inherit;
+      font-size: 18px;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    #code { font: 600 26px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 8px; }
+    button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+    #send { width: 100%; height: 56px; margin-top: 18px; border-radius: 28px; background: var(--accent); color: #fff; font-size: 18px; font-weight: 700; }
+    #send:disabled { opacity: .5; }
+    #status { min-height: 24px; margin: 14px 2px 0; color: var(--dim); }
+    #status.ok { color: #6ee7a0; }
+    #status.bad { color: #ff8a8a; }
+    .hint { margin-top: 26px; font-size: 14px; color: var(--dim); }
+    .hint b { color: var(--fg); }
+  </style>
+</head>
+<body>
+  <main>
+    <header><img src="icon-192.png" alt=""><h1>TokGlass</h1></header>
+    <form id="form">
+      <label for="code">Code shown on the glasses</label>
+      <input id="code" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="000000" required pattern="\d{6}">
+      <label for="what">#hashtag, @creator, or a pasted TikTok link</label>
+      <input id="what" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="#cats" required>
+      <button id="send" type="submit">Send to glasses</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p class="hint">On the glasses open TokGlass and choose <b>From phone</b>. The code stays the same, so it is asked only once.</p>
+    <p class="hint">In the TikTok app use <b>Share → Copy link</b>, then paste the link here. A word without # or @ is sent as a hashtag.</p>
+  </main>
+  <script src="config.js"></script>
+  <script>
+    'use strict';
+    const API = String(window.TOKGLASS_API || '').replace(/\/+$/, '');
+    const $ = (id) => document.getElementById(id);
+    const code = $('code'), what = $('what'), send = $('send'), status = $('status');
+    const saved = (key) => { try { return localStorage.getItem(key) || ''; } catch (e) { return ''; } };
+    const save = (key, value) => { try { localStorage.setItem(key, value); } catch (e) { /* private mode */ } };
+
+    code.value = saved('tg.phoneCode');
+    (code.value ? what : code).focus();
+    code.addEventListener('input', () => { code.value = code.value.replace(/\D/g, '').slice(0, 6); });
+
+    function say(text, kind) { status.textContent = text; status.className = kind || ''; }
+
+    // Sorts the text into a hashtag, a creator or a video link.
+    function parse(text) {
+      const t = text.trim();
+      if (/tiktok\.com/i.test(t)) {
+        const path = t.replace(/^.*?tiktok\.com/i, '').split(/[?#]/)[0];
+        const tag = path.match(/^\/tag\/([^/]+)/);
+        if (tag) return { kind: 'tag', value: decodeURIComponent(tag[1]) };
+        const user = path.match(/^\/@([\w.]+)\/?$/);
+        if (user) return { kind: 'user', value: user[1] };
+        return { kind: 'video', link: t };
+      }
+      if (t.startsWith('@')) return { kind: 'user', value: t.slice(1).replace(/\s+/g, '') };
+      return { kind: 'tag', value: t.replace(/^#+/, '').replace(/\s+/g, '') };
+    }
+
+    async function submit() {
+      if (!/^\d{6}$/.test(code.value)) { say('Enter the 6-digit code from the glasses.', 'bad'); code.focus(); return; }
+      if (!what.value.trim()) { what.focus(); return; }
+      save('tg.phoneCode', code.value);
+      send.disabled = true;
+      say('Sending…');
+      try {
+        const target = parse(what.value);
+        const body = { code: code.value, kind: target.kind, value: (target.value || '').toLowerCase() };
+        if (target.kind === 'video') {
+          const found = await fetch(API + '/api/video?url=' + encodeURIComponent(target.link));
+          const item = await found.json().catch(() => null);
+          if (!found.ok || !item) throw new Error((item && item.error) || 'Could not read that link.');
+          body.value = item.id;
+          body.item = item;
+        }
+        const response = await fetch(API + '/api/relay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(response.status === 400 ? 'That is not a hashtag, a username or a TikTok link.' : '');
+        say(target.kind === 'video' ? 'Sent. The video opens on your glasses.'
+          : `Sent. ${target.kind === 'tag' ? '#' : '@'}${body.value} opens on your glasses.`, 'ok');
+        what.select();
+      } catch (e) {
+        say(e.message && !/fetch|network/i.test(e.message) ? e.message : 'Could not send. Check the connection and try again.', 'bad');
+      }
+      send.disabled = false;
+    }
+    $('form').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+/* Additive display: pure black is transparent, so black is the canvas and
+   light pixels are the only thing the wearer sees. */
+:root {
+  --fg: #f4f4f4;
+  --dim: #a9adb3;
+  --surface: #1d1f23;
+  --accent: #fe2c55;
+  --cyan: #25f4ee;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  background: #000;
+  color: var(--fg);
+  font: 22px/1.25 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { width: 600px; height: 600px; }
+
+.screen {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  height: 50px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.head h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.head .pos { color: var(--dim); font-size: 18px; white-space: nowrap; }
+.logo { flex: none; width: 26px; height: 38px; border-radius: 8px; border: 4px solid var(--accent); box-shadow: -3px 0 0 var(--cyan); position: relative; }
+.logo::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  border: 7px solid transparent;
+  border-left: 10px solid #fff;
+  border-right: 0;
+}
+.pill { flex: none; height: 42px; padding: 0 16px; border-radius: 21px; font-size: 18px; font-weight: 600; white-space: nowrap; }
+.pill.on { color: var(--cyan); }
+.pill.on:focus { color: #fff; }
+
+/* ---------- focusable things ---------- */
+.f {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background: var(--surface);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.f:focus {
+  background: var(--accent);
+  border-color: #fff;
+  color: #fff;
+}
+.f:focus .sub { color: #fff; }
+
+/* ---------- home ---------- */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.tile {
+  height: 150px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  text-align: left;
+}
+.tile .name { font-size: 25px; font-weight: 700; }
+.tile .sub { font-size: 17px; color: var(--dim); }
+.ico { flex: none; width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.btn {
+  height: 96px;
+  width: 100%;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  font-size: 25px;
+  font-weight: 600;
+}
+/* The host's badge sits bottom-right, so the footer stays on the left. */
+.foot { position: absolute; left: 20px; bottom: 16px; color: #777b82; font-size: 16px; }
+
+/* ---------- keyboard ---------- */
+.type { padding: 12px; gap: 8px; }
+.type input {
+  flex: none;
+  width: 100%;
+  height: 60px;
+  padding: 0 18px;
+  font-size: 25px;
+  font-weight: 600;
+}
+.type input::placeholder { color: var(--dim); font-weight: 400; }
+.type input:focus::placeholder { color: #fff; }
+.type input::-webkit-search-cancel-button { display: none; }
+.keys { flex: none; display: flex; flex-direction: column; gap: 4px; }
+.keys .kr { display: flex; gap: 4px; height: 58px; }
+.key {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 26px;
+  font-weight: 600;
+  text-align: center;
+}
+.key.wide { flex: 2.1 1 0; font-size: 20px; }
+.key.space { flex: 4.2 1 0; font-size: 20px; }
+.key.go { background: #3a1019; }
+.key.go:focus { background: var(--accent); }
+.sugs { flex: none; display: flex; flex-direction: column; gap: 4px; }
+.sug {
+  height: 54px;
+  width: 100%;
+  padding: 0 18px;
+  text-align: left;
+  font-size: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sug::before { content: "↗  "; opacity: .6; }
+
+/* ---------- results ---------- */
+.rows { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
+.row {
+  height: 98px;
+  flex: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 0 6px;
+  text-align: left;
+}
+.row .th { position: relative; flex: none; width: 50px; height: 86px; border-radius: 10px; overflow: hidden; background: #2a2e35; }
+.row .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.row .txt { flex: 1; min-width: 0; }
+.row .t {
+  font-size: 21px;
+  line-height: 25px;
+  font-weight: 600;
+  max-height: 50px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.row .sub {
+  margin-top: 4px;
+  font-size: 17px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.slim { height: 76px; padding: 0 20px; gap: 16px; }
+.row.slim .t { font-size: 25px; }
+.more { flex: none; height: 60px; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 18px; }
+
+/* ---------- message / phone ---------- */
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+}
+.center p { margin: 0; color: var(--dim); max-width: 520px; }
+.center .big { color: var(--fg); font-size: 26px; font-weight: 700; }
+.center .url { color: var(--fg); font-size: 22px; font-weight: 700; word-break: break-all; }
+.code {
+  font: 700 88px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 12px;
+  padding-left: 12px;
+  color: var(--accent);
+}
+.center .btn { justify-content: center; text-align: center; height: 80px; }
+.spin {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, .2);
+  border-top-color: var(--accent);
+  animation: spin 1s steps(12) infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- player ---------- */
+/* A vertical video fills the display's height and a wide one its width; what
+   is left over is black, which the display shows as nothing. */
+.player { padding: 0; }
+.player .stage { position: relative; flex: none; width: 600px; height: 600px; background: #000; overflow: hidden; }
+.player .frame { position: absolute; left: 0; top: 0; width: 600px; height: 600px; }
+/* The frame never takes input: every key stays with the page. */
+.player iframe, .player video { display: block; height: 600px; border: 0; pointer-events: none; }
+.player video, .player .frame img { width: 600px; }
+.player .frame img { display: block; height: 600px; object-fit: contain; }
+.player iframe { width: 338px; }
+.player .frame > * { position: absolute; left: 0; top: 0; }
+.player .frame > iframe { left: 131px; }
+.player video { opacity: 0; }
+.player video.on { opacity: 1; }
+/* Landscape clips are letterboxed in black, which the display shows as nothing. */
+.player video { object-fit: contain; background: #000; }
+.player .state {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 22px;
+  text-align: center;
+  background: rgba(0, 0, 0, .7);
+}
+.player .state:empty { display: none; }
+/* Caption and progress stay in the column a vertical video occupies. */
+.player .band { position: absolute; left: 131px; right: 131px; padding: 12px 14px; transition: opacity .25s; }
+.player .band.top { top: 0; text-align: right; background: linear-gradient(rgba(0, 0, 0, .7), transparent); }
+.player .band.bottom { bottom: 0; padding-top: 40px; background: linear-gradient(transparent, rgba(0, 0, 0, .88) 45%); }
+.player.idle .band, .player.idle .hint { opacity: 0; }
+.player .where { font-size: 17px; font-weight: 600; }
+.player .author { font-size: 21px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .desc {
+  margin-top: 4px;
+  font-size: 18px;
+  line-height: 23px;
+  max-height: 69px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.player .bar { height: 6px; margin-top: 10px; border-radius: 3px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.player .bar i { display: block; width: 0; height: 100%; background: var(--accent); }
+.player .times { margin-top: 5px; min-height: 20px; font-size: 16px; color: var(--dim); }
+/* Sits in the empty strip left of the video, clear of the host's badge. */
+.player .hint { white-space: pre-line; position: absolute; left: 10px; top: 14px; width: 112px; font-size: 15px; line-height: 21px; color: #8b8f96; transition: opacity .25s; }
+.player .sink { position: absolute; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; }
+
+/* ---------- toast ---------- */
+#toast {
+  position: fixed;
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+  max-width: 540px;
+  padding: 12px 20px;
+  border-radius: 16px;
+  background: #33373e;
+  color: #fff;
+  font-size: 20px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+#toast.on { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 2s; }
+  #toast, .player .band, .player .hint { transition: none; }
+}
+
+[hidden] { display: none !important; }

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "TokGlass",
+  "description": "Watch TikTok hashtags and creators. Swipe through videos, follow what you like.",
+  "appearance": {
+    "theme_color": "#FFFFFF",
+    "icon": {
+      "src": "icon.png",
+      "type": "monochrome"
+    },
+    "icon_background": {
+      "colors": ["#3A4150", "#1A1D26", "#07080B"],
+      "stops": [0.0, 0.55, 1.0],
+      "inner_glow_color": "#25F4EE"
+    }
+  }
+}
