@@ -5,7 +5,7 @@
 //   /api/feed?tag=cats | ?user=tiktok   video list of one hashtag or creator
 //   /api/video?url=… | ?id=…            one video from a pasted link or an id
 //   /api/low?id=…                       the same video at about 40 % of the bitrate
-//   /v?u=…&t=…                          streams that smaller file
+//   /v?u=…                              streams that smaller file
 //   /api/relay                          phone → glasses hand-over by 6-digit code
 
 const WEB_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
@@ -147,45 +147,46 @@ async function oneVideo(params) {
 
 /* --------------------------------------------------------- data-saver video */
 
-// An embed page hands out one full-rate file (0.6–4 Mbit/s). The video's own
-// page also lists a "lowest" rendition at roughly 40 % of that. Those files
-// only load with TikTok's session cookie and referrer, which a page on
-// another site cannot send, so /v streams them.
+// An embed page hands out one full-rate file (0.6–4 Mbit/s). The item API
+// behind TikTok's own embed player lists every rendition, among them a
+// "lowest" one at roughly 40 % of that. Those files only load with a
+// tiktok.com referrer, which a page on another site cannot send, so /v
+// streams them.
 
 // Only TikTok's own video hosts are ever fetched, so this is no open proxy.
 const FILE_HOSTS = /^v[\w-]+\.(tiktok\.com|tiktokcdn(-[a-z]+)?\.com)$/;
-const TOKEN = /^[\w.~%+\/=-]{8,400}$/;
+const isFile = (url) => { try { return FILE_HOSTS.test(new URL(url).hostname); } catch (e) { return false; } };
 
 async function low(params) {
   const id = params.get('id') || '';
   if (!VIDEO.test(id)) return json({ error: 'bad id' }, 400);
-  const page = await fetch(`https://www.tiktok.com/@_/video/${id}`, {
-    headers: { 'User-Agent': WEB_UA, 'Accept-Language': 'en' },
+  const answer = await fetch(`https://www.tiktok.com/player/api/v1/items?item_ids=${id}`, {
+    headers: { 'User-Agent': WEB_UA, Referer: `https://www.tiktok.com/player/v1/${id}` },
     signal: AbortSignal.timeout(7000),
   });
-  const chain = page.headers.getSetCookie().map((line) => /^tt_chain_token=([^;]+)/.exec(line)).find(Boolean);
-  const data = scriptJson(await page.text(), '__UNIVERSAL_DATA_FOR_REHYDRATION__');
-  const detail = data && data.__DEFAULT_SCOPE__ && data.__DEFAULT_SCOPE__['webapp.video-detail'];
-  const info = detail && detail.itemInfo && detail.itemInfo.itemStruct && detail.itemInfo.itemStruct.video;
-  const lowest = ((info && info.bitrateInfo) || [])
-    .filter((entry) => entry.CodecType === 'h264' && entry.PlayAddr && entry.PlayAddr.UrlList)
-    .sort((a, b) => a.Bitrate - b.Bitrate)[0];
-  const file = lowest && lowest.PlayAddr.UrlList.find((url) => { try { return FILE_HOSTS.test(new URL(url).hostname); } catch (e) { return false; } });
-  if (!chain || !file) return json({ error: 'no smaller file' }, 404);
+  const data = await answer.json().catch(() => null);
+  const info = data && data.items && data.items[0] && data.items[0].video_info;
+  const lowest = ((info && info.profiles) || [])
+    .filter((entry) => entry.codec_type === 'h264' && entry.play_addr && entry.play_addr.url_list)
+    .sort((a, b) => a.bitrate - b.bitrate)[0];
+  const file = lowest && lowest.play_addr.url_list.find(isFile);
+  if (!file) {
+    // Says which part was missing; the glasses have no console to look at.
+    const why = `answer ${answer.status}, json ${data ? 'yes' : 'no'}, renditions ${((info && info.profiles) || []).length}`;
+    return json({ error: 'no smaller file', why }, 404);
+  }
   // The file's address lasts for hours, so a short cache is safe.
   return json({
-    src: `/v?u=${encodeURIComponent(file)}&t=${encodeURIComponent(chain[1])}`,
-    kbps: Math.round(lowest.Bitrate / 1000),
-    full: Math.round((info.bitrate || 0) / 1000),
+    src: `/v?u=${encodeURIComponent(file)}`,
+    kbps: Math.round(lowest.bitrate / 1000),
+    full: Math.round(((info.meta && info.meta.bitrate) || 0) / 1000),
   }, 200, 'public, max-age=600');
 }
 
 async function stream(request, params) {
-  let file;
-  try { file = new URL(params.get('u') || ''); } catch (e) { return json({ error: 'bad file' }, 400); }
-  const token = params.get('t') || '';
-  if (file.protocol !== 'https:' || !FILE_HOSTS.test(file.hostname) || !TOKEN.test(token)) return json({ error: 'bad file' }, 400);
-  const headers = { 'User-Agent': WEB_UA, Referer: 'https://www.tiktok.com/', Cookie: `tt_chain_token=${token}` };
+  const file = params.get('u') || '';
+  if (!file.startsWith('https://') || !isFile(file)) return json({ error: 'bad file' }, 400);
+  const headers = { 'User-Agent': WEB_UA, Referer: 'https://www.tiktok.com/' };
   const range = request.headers.get('range');
   if (range) headers.Range = range;
   const upstream = await fetch(file, { headers, redirect: 'manual' });

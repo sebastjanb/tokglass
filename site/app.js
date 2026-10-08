@@ -2,7 +2,7 @@
    600×600 additive display, D-pad arrows + Enter, Back is browser history. */
 'use strict';
 
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 // The pages are static; everything that talks to TikTok runs on the API host
 // named in config.js.
 const API = String(window.TOKGLASS_API || '').replace(/\/+$/, '');
